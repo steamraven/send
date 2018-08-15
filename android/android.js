@@ -2,76 +2,40 @@
 
 window.MAXFILESIZE = 1024 * 1024 * 1024 * 2;
 
+const html = require('choo/html');
 const EventEmitter = require('events');
 const emitter = new EventEmitter();
 
-function dom(tagName, attributes, children = []) {
-  const node = document.createElement(tagName);
-  for (const name in attributes) {
-    if (name.indexOf('on') === 0) {
-      node[name] = attributes[name];
-    } else if (name === 'htmlFor') {
-      node.htmlFor = attributes.htmlFor;
-    } else if (name === 'className') {
-      node.className = attributes.className;
-    } else {
-      node.setAttribute(name, attributes[name]);
-    }
-  }
-  if (!(children instanceof Array)) {
-    children = [children];
-  }
-  for (let child of children) {
-    if (typeof child === 'string') {
-      child = document.createTextNode(child);
-    }
-    node.appendChild(child);
-  }
-  return node;
-}
-
 function uploadComplete(file) {
+  function onclick(e) {
+    e.preventDefault();
+    input.select();
+    document.execCommand('copy');
+    input.selectionEnd = input.selectionStart;
+    copyText.textContent = 'Copied!';
+    setTimeout(function() {
+      copyText.textContent = 'Copy link';
+    }, 2000);
+  }
+  function onclickSendAnother(_e) {
+    render();
+    document.getElementById('label').click();
+  }
+  const input = html`<input id="url" value=${file.url} readonly="true" />`;
+  const copyText = html`<span>Copy link</span>`;
+  const node = html`<div id="white">
+    <div class="card">
+      <div>The card contents will be here.</div>
+      <div>Expires after: <span class="expires-after">exp</span></div>
+      ${input}
+      <div id="copy-link" onclick=${onclick}>
+        <img id="copy-image" src="copy-link.png" />
+        ${copyText}
+      </div>
+      <img id="send-another" src="cloud-upload.png" onclick=${onclickSendAnother} />
+  </div>`;
+
   document.body.innerHTML = '';
-  const input = dom('input', { id: 'url', value: file.url, readonly: 'true' });
-  const copyText = dom('span', {}, 'Copy link');
-  const copyImage = dom('img', { id: 'copy-image', src: 'copy-link.png' });
-  const node = dom(
-    'div',
-    { id: 'white' },
-    dom('div', { className: 'card' }, [
-      dom('div', {}, 'The card contents will be here.'),
-      dom('div', {}, [
-        'Expires after: ',
-        dom('span', { className: 'expiresAfter' }, 'exp')
-      ]),
-      input,
-      dom(
-        'div',
-        {
-          id: 'copy-link',
-          onclick: e => {
-            e.preventDefault();
-            input.select();
-            document.execCommand('copy');
-            input.selectionEnd = input.selectionStart;
-            copyText.textContent = 'Copied!';
-            setTimeout(function() {
-              copyText.textContent = 'Copy link';
-            }, 2000);
-          }
-        },
-        [copyImage, copyText]
-      ),
-      dom('img', {
-        id: 'send-another',
-        src: 'cloud-upload.png',
-        onclick: () => {
-          render();
-          document.getElementById('label').click();
-        }
-      })
-    ])
-  );
   document.body.appendChild(node);
 }
 
@@ -115,32 +79,22 @@ function upload(event) {
 }
 
 function render() {
+  const node = html`<div id="white">
+    <div id="centering">
+      <img src="encrypted-envelope.png" />
+      <h4>Private, Encrypted File Sharing</h4>
+      <div>
+        Send files through a safe, private, and encrypted link that automatically expires to ensure your stuff does not remain online forever.
+      </div>
+      <div id="spacer">
+      </div>
+      <label id="label" for="input">
+        <img src="cloud-upload.png" />
+      </label>
+      <input id="input" name="input" type="file" onchange=${upload} />
+    </div>
+  </div>`;
   document.body.innerHTML = '';
-  const node = dom(
-    'div',
-    { id: 'white' },
-    dom('div', { id: 'centering' }, [
-      dom('img', { src: 'encrypted-envelope.png' }),
-      dom('h4', {}, 'Private, Encrypted File Sharing'),
-      dom(
-        'div',
-        {},
-        'Send files through a safe, private, and encrypted link that automatically expires to ensure your stuff does not remain online forever.'
-      ),
-      dom('div', { id: 'spacer' }),
-      dom(
-        'label',
-        { id: 'label', htmlFor: 'input' },
-        dom('img', { src: 'cloud-upload.png' }, [])
-      ),
-      dom('input', {
-        id: 'input',
-        type: 'file',
-        name: 'input',
-        onchange: upload
-      })
-    ])
-  );
   document.body.appendChild(node);
 }
 
@@ -148,36 +102,22 @@ emitter.on('render', function() {
   if (!state.transfer || !state.transfer.progress) {
     return;
   }
-  document.body.innerHTML = '';
   const percent = Math.floor(state.transfer.progressRatio * 100);
-  const node = dom(
-    'div',
-    { id: 'white', style: 'width: 90%' },
-    dom('div', { className: 'card' }, [
-      dom('div', {}, `${percent}%`),
-      dom(
-        'span',
-        {
-          style: `display: inline-block; height: 4px; border-radius: 2px; width: ${percent}%; background-color: #1b96ef; color: white`
-        },
-        '.'
-      ),
-      dom(
-        'div',
-        {
-          style: 'text-align: right',
-          onclick: e => {
-            e.preventDefault();
-            if (state.uploading) {
-              emitter.emit('cancel');
-              render();
-            }
-          }
-        },
-        'CANCEL'
-      )
-    ])
-  );
+  function onclick(e) {
+    e.preventDefault();
+    if (state.uploading) {
+      emitter.emit('cancel');
+      render();
+    }
+  }
+  const node = html`<div id="white">
+    <div class="card">
+      <div>${percent}%</div>
+      <span class="progress" style="width: ${percent}%">.</span>
+      <div class="cancel" onclick=${onclick}>CANCEL</div>
+    </div>
+  </div>`;
+  document.body.innerHTML = '';
   document.body.appendChild(node);
 });
 
