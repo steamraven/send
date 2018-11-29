@@ -42,10 +42,12 @@ module.exports = function(req, res) {
   });
 
   req.on('close', async err => {
-    try {
-      await storage.del(newId);
-    } catch (e) {
-      log.info('DeleteError:', newId);
+    if (typeof err !== undefined && err) {
+      try {
+        await storage.del(newId);
+      } catch (e) {
+        log.info('DeleteError:', newId);
+      }
     }
   });
 };
